@@ -1,6 +1,6 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,clipboard,safeStorage,session}=require('electron');
 const path=require('node:path'),fs=require('node:fs'),crypto=require('node:crypto');
-const {verifyActivationToken}=require('./activation-client.mjs');
+let verifyActivationToken;
 let db={listings:[],accounts:[],tasks:[],logs:[],settings:{activationServer:''},activation:null,cookieVault:null};
 const dbFile=()=>path.join(app.getPath('userData'),'marketplace-bot-data.json');
 function load(){try{const saved=JSON.parse(fs.readFileSync(dbFile(),'utf8'));db={...db,...saved,settings:{...db.settings,...saved.settings}};}catch{}}
@@ -8,7 +8,7 @@ function save(){fs.mkdirSync(path.dirname(dbFile()),{recursive:true});const tmp=
 function log(type,message){db.logs.unshift({id:crypto.randomUUID(),type,message,at:new Date().toISOString()});db.logs=db.logs.slice(0,500);save();}
 function safeText(v,max=5000){return String(v??'').trim().slice(0,max);}
 function createWindow(){const w=new BrowserWindow({width:1440,height:920,minWidth:1100,minHeight:720,backgroundColor:'#0b1220',title:'Marketplace Bot',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});w.loadFile(path.join(__dirname,'index.html'));}
-app.whenReady().then(()=>{load();createWindow();app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow();});});
+app.whenReady().then(async()=>{({verifyActivationToken}=await import('./activation-client.mjs'));load();createWindow();app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 ipcMain.handle('app:state',()=>({listings:db.listings,accounts:db.accounts,tasks:db.tasks,logs:db.logs,settings:db.settings,activated:validActivation()}));
 function validActivation(){if(!db.activation||!safeStorage.isEncryptionAvailable())return false;try{const token=JSON.parse(safeStorage.decryptString(Buffer.from(db.activation,'base64')));const pem=fs.readFileSync(path.join(__dirname,'activation-public-key.pem'),'utf8');return verifyActivationToken(token,pem).valid;}catch{return false;}}
