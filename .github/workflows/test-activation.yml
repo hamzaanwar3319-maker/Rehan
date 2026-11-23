@@ -1,0 +1,21 @@
+name: Activation service tests
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'activation-service/**'
+      - 'customer-app/**'
+  push:
+    branches: [main]
+    paths:
+      - 'activation-service/**'
+      - 'customer-app/**'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test activation-service/tests/*.test.mjs
