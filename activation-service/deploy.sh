@@ -17,7 +17,7 @@ if [ ! -f private-key.pem ] || [ ! -f public-key.pem ]; then
     echo "Only one signing key file exists. Restore the matching key pair; refusing to overwrite."
     exit 1
   fi
-  node keygen.mjs
+  docker run --rm -v "$PWD:/keys" -w /keys node:20-alpine node keygen.mjs
 fi
 mkdir -p data
 if [ "$(id -u)" -eq 0 ]; then chown 1000:1000 data; fi
