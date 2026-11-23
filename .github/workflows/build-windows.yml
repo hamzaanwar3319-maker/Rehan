@@ -13,6 +13,10 @@ on:
       - 'desktop/**'
       - 'customer-app/**'
       - '.github/workflows/build-windows.yml'
+concurrency:
+  group: marketplace-bot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   admin:
     runs-on: windows-latest
