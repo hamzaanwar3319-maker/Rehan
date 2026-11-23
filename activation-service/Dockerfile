@@ -1,12 +1,12 @@
 FROM node:20-alpine
+RUN apk add --no-cache su-exec
 WORKDIR /app
 COPY package.json ./
 COPY server.mjs ./
+COPY docker-entrypoint.sh ./
+RUN chmod 755 /app/docker-entrypoint.sh
 ENV HOST=0.0.0.0
 ENV PORT=8787
 ENV DATA_FILE=/data/activation-db.json
-ENV TOKEN_PRIVATE_KEY_FILE=/run/secrets/activation_private_key
-ENV TOKEN_PUBLIC_KEY_FILE=/run/secrets/activation_public_key
 EXPOSE 8787
-USER node
-CMD ["node","server.mjs"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
