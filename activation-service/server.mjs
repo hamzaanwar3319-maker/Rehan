@@ -53,6 +53,7 @@ const server=http.createServer(async(req,res)=>{
    return send(res,200,result);
   }
   if(req.method==='POST'&&url.pathname==='/v1/activate'){
+   if(rateLimited(req))return send(res,429,{error:'Too many activation attempts. Try again later.'});
    const data=await body(req);const key=String(data.key||'');
    if(!/^\d{10}$/.test(key))return send(res,400,{error:'Enter a valid 10-digit key.'});
    const result=await enqueue(()=>{
@@ -80,5 +81,4 @@ const server=http.createServer(async(req,res)=>{
  }catch(e){return send(res,e.status||500,{error:e.message||'Internal server error'});}
 });
 load();
-server.listen(PORT,HOST,()=>process.stdout.write('Activation service listening on '+HOST+':'+PORT+'
-'));
+server.listen(PORT,HOST,()=>process.stdout.write('Activation service listening on '+HOST+':'+PORT+'\n'));
