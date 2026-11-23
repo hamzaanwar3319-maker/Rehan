@@ -23,5 +23,7 @@ jobs:
           node --check customer-app/activation-client.mjs
           node --check activation-service/server.mjs
           node --check activation-service/keygen.mjs
+          bash -n activation-service/deploy.sh
+          sh -n activation-service/docker-entrypoint.sh
       - name: Run activation and service integration tests
         run: node --test activation-service/tests/*.test.mjs
