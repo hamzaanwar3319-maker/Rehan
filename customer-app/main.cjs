@@ -1,6 +1,7 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,clipboard,safeStorage,session}=require('electron');
 const path=require('node:path'),fs=require('node:fs'),crypto=require('node:crypto');
 const {verifyOfflineEntry}=require('./offline-license.cjs');
+const composerWindows = new Map();
 let db={listings:[],accounts:[],tasks:[],logs:[],settings:{},activation:null,offlineKeyPack:null,usedOfflineKeys:[],cookieVault:null};
 const dbFile=()=>path.join(app.getPath('userData'),'marketplace-bot-data.json');
 function load(){try{const saved=JSON.parse(fs.readFileSync(dbFile(),'utf8'));db={...db,...saved,settings:{...db.settings,...saved.settings},usedOfflineKeys:Array.isArray(saved.usedOfflineKeys)?saved.usedOfflineKeys:[]};}catch{}}
@@ -91,8 +92,19 @@ ipcMain.handle('listing:openComposer',async(_e,{id,accountId})=>{
  const result=await prepareFacebookListing(win,l,imagePaths);
  clipboard.writeText(l.title);
  if(result.loginRequired){log('warning','Facebook sign-in is required before preparing listing: '+l.title);return {ok:true,loginRequired:true,fields:[],photos:0,message:'Sign in to Facebook in this window, then try Prepare listing again.'};}
- log('info','Prepared Marketplace listing '+l.title+'; filled '+result.fields.join(', ')+'; uploaded '+result.photos+' photos. Final Publish click remains manual.');
- return {ok:true,title:l.title,account:a.name,fields:result.fields,photos:result.photos,photoError:result.photoError||null,message:'Review all fields and photos in Facebook, then click Publish yourself.'};
+ const sessionId=crypto.randomUUID();composerWindows.set(sessionId,win);
+ log('info','Prepared Marketplace listing '+l.title+'; filled '+result.fields.join(', ')+'; uploaded '+result.photos+' photos. Waiting for user confirmation to publish.');
+ return {ok:true,sessionId,title:l.title,account:a.name,fields:result.fields,photos:result.photos,photoError:result.photoError||null,message:'Review the Facebook form and photos. Use Publish on Facebook only when ready.'};
+});
+
+ipcMain.handle('listing:publish',async(_e,{sessionId})=>{
+ const win=composerWindows.get(String(sessionId||''));
+ if(!win||win.isDestroyed())throw Error('Facebook listing window is no longer available. Prepare the listing again.');
+ if(!/^https?:\\/\\/(www\\.)?facebook\\.com\\//i.test(win.webContents.getURL()))throw Error('The active window is not a Facebook page.');
+ const result=await win.webContents.executeJavaScript(`(()=>{const visible=e=>!!(e&&e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&!e.disabled&&e.getAttribute('aria-disabled')!=='true');const matches=[...document.querySelectorAll('button,[role="button"]')].filter(e=>visible(e)&&((e.innerText||e.getAttribute('aria-label')||'').trim().toLowerCase()==='publish'));if(matches.length!==1)return {clicked:false,count:matches.length};matches[0].click();return {clicked:true};})()`,true);
+ if(!result.clicked)throw Error(result.count===0?'Facebook Publish button was not found or is disabled. Review the listing in Facebook.':'More than one Publish control was found. For safety, publish manually in Facebook.');
+ composerWindows.delete(String(sessionId));log('info','Clicked Facebook Publish after explicit user confirmation. Verify the resulting listing in Facebook.');
+ return {ok:true,message:'Publish button clicked. Check Facebook for the final listing status.'};
 });
 ipcMain.handle('account:add',(_e,data)=>{const name=safeText(data.name,80);if(!name)throw Error('Enter an account label.');const a={id:crypto.randomUUID(),name,createdAt:new Date().toISOString()};db.accounts.unshift(a);save();log('info','Added account profile: '+name);return a;});
 ipcMain.handle('account:remove',(_e,{id})=>{db.accounts=db.accounts.filter(x=>x.id!==id);save();return true;});
