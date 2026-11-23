@@ -15,8 +15,9 @@ The first imported pack establishes the trusted Admin public key for that custom
 - Create, edit and delete listing drafts with title, description, price, category, condition, availability, location, tags, delivery and up to 10 local image paths.
 - Open Facebook Marketplace in a separate persistent browser profile for each saved account.
 - **Prepare & upload** attempts to fill title, price and description and upload selected photos using the current Facebook page controls.
+- After preparation, the app shows a separate confirmation dialog. If the user reviews the Facebook form and presses **Publish on Facebook**, the app clicks the single enabled Facebook button whose visible label is exactly `Publish`. It fails closed if the button is missing, disabled or ambiguous.
 - Facebook frequently changes its interface. Field detection and photo upload are best-effort and must be checked in the Facebook window.
-- The user must review the listing and click Facebook's final **Publish** button. The app does not submit listings unattended, bypass login, CAPTCHA, 2FA or other security checks.
+- Publishing is never unattended: the user must review the listing and explicitly press **Publish on Facebook** in the bot. The app does not bypass login, CAPTCHA, 2FA or other security checks. Facebook UI changes can prevent field detection or publication; always verify the resulting listing in Facebook.
 - Facebook itself uses HTTPS; only the app's licensing and activation have been made fully offline.
 
 ## Other features
