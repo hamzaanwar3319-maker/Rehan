@@ -100,7 +100,7 @@ ipcMain.handle('listing:openComposer',async(_e,{id,accountId})=>{
 ipcMain.handle('listing:publish',async(_e,{sessionId})=>{
  const win=composerWindows.get(String(sessionId||''));
  if(!win||win.isDestroyed())throw Error('Facebook listing window is no longer available. Prepare the listing again.');
- if(!/^https?:\\/\\/(www\\.)?facebook\\.com\\//i.test(win.webContents.getURL()))throw Error('The active window is not a Facebook page.');
+ const activeUrl=new URL(win.webContents.getURL());if(activeUrl.hostname!=='facebook.com'&&!activeUrl.hostname.endsWith('.facebook.com'))throw Error('The active window is not a Facebook page.');
  const result=await win.webContents.executeJavaScript(`(()=>{const visible=e=>!!(e&&e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden'&&!e.disabled&&e.getAttribute('aria-disabled')!=='true');const matches=[...document.querySelectorAll('button,[role="button"]')].filter(e=>visible(e)&&((e.innerText||e.getAttribute('aria-label')||'').trim().toLowerCase()==='publish'));if(matches.length!==1)return {clicked:false,count:matches.length};matches[0].click();return {clicked:true};})()`,true);
  if(!result.clicked)throw Error(result.count===0?'Facebook Publish button was not found or is disabled. Review the listing in Facebook.':'More than one Publish control was found. For safety, publish manually in Facebook.');
  composerWindows.delete(String(sessionId));log('info','Clicked Facebook Publish after explicit user confirmation. Verify the resulting listing in Facebook.');
