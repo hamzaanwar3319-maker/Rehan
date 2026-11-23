@@ -11,7 +11,7 @@ app.whenReady().then(()=>{load();createWindow();app.on('activate',()=>{if(!Brows
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 ipcMain.handle('app:state',()=>({listings:db.listings,accounts:db.accounts,tasks:db.tasks,logs:db.logs,settings:db.settings,activated:validActivation()}));
 function verifyOfflineEntry(entry,publicKey){
- if(!entry||!entry.payload||!/^\\d{10}$/.test(String(entry.payload.key||'')))return false;
+ if(!entry||!entry.payload||!/^\d{10}$/.test(String(entry.payload.key||'')))return false;
  const p=entry.payload;if(p.product!=='Marketplace Bot'||![30,90,180,365].includes(Number(p.days)))return false;
  try{const body=Buffer.from(JSON.stringify(p)).toString('base64url');return crypto.verify(null,Buffer.from(body),crypto.createPublicKey(publicKey),Buffer.from(entry.signature||'','base64url'));}catch{return false;}
 }
@@ -33,7 +33,7 @@ ipcMain.handle('offline:importPack',async()=>{
 });
 ipcMain.handle('offline:activate',(_e,{key})=>{
  if(!safeStorage.isEncryptionAvailable())throw Error('Windows secure storage is unavailable.');
- const value=String(key||'').trim();if(!/^\\d{10}$/.test(value))throw Error('Enter your 10-digit subscription key.');
+ const value=String(key||'').trim();if(!/^\d{10}$/.test(value))throw Error('Enter your 10-digit subscription key.');
  if(!db.offlineKeyPack)throw Error('First import the offline key pack supplied by your Admin.');
  if(validActivation())throw Error('This workspace is already activated.');
  if(db.usedOfflineKeys.includes(value))throw Error('This key has already been used on this installation.');
