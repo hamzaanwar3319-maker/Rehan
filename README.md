@@ -41,7 +41,7 @@ No PC ID is used. This means the local activation token and app data can be copi
 - Cookie JSON archive import encrypted with Windows secure storage. It is an archive only; cookies are not injected into browser sessions.
 - JSON backup/restore for drafts, account labels and task history. Activation token and cookie vault are intentionally excluded from portable backup.
 
-**Facebook automation is not implemented.** The customer app does not automatically publish, relist, renew or delete Facebook Marketplace listings. It does not bypass CAPTCHA, 2FA, login controls or platform anti-abuse protections. The current workflow keeps the user in control and uses Facebook's own interface.
+**Facebook listing assistance is implemented on a best-effort basis.** The customer app opens Facebook Marketplace in a persistent account-specific browser profile, attempts to fill supported listing fields and upload selected photos, then presents an explicit confirmation. When the user presses **Publish on Facebook**, it clicks the single enabled Facebook control labelled exactly `Publish`. UI changes can prevent this; the user must verify the resulting listing. It does not bypass CAPTCHA, 2FA, login controls or platform anti-abuse protections. Relisting, renewals and deletion automation are not implemented.
 
 ## Verification status
 GitHub Actions workflows are configured to test activation-token verification and build both Windows installers on pull requests. A workflow configuration is not proof of a successful build: check the latest Actions run before distributing installers. Live activation deployment, service secrets, generated public-key pinning and real Facebook account QA are still operator tasks.
