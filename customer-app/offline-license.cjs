@@ -1,6 +1,6 @@
 const crypto = require('node:crypto');
 function verifyOfflineEntry(entry, publicKey) {
-  if (!entry || !entry.payload || !/^\\d{10}$/.test(String(entry.payload.key || ''))) return false;
+  if (!entry || !entry.payload || !/^\d{10}$/.test(String(entry.payload.key || ''))) return false;
   const payload = entry.payload;
   if (payload.product !== 'Marketplace Bot' || ![30, 90, 180, 365].includes(Number(payload.days))) return false;
   try {
