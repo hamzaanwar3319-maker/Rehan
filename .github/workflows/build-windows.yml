@@ -8,7 +8,7 @@ on:
       - 'customer-app/**'
       - '.github/workflows/build-windows.yml'
   push:
-    branches: [main]
+    branches: [main, marketplace-bot-license-keys-2026-11-24]
     paths:
       - 'desktop/**'
       - 'customer-app/**'
