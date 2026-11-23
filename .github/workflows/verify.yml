@@ -21,6 +21,7 @@ jobs:
           node --check customer-app/preload.cjs
           node --check customer-app/renderer.js
           node --check customer-app/activation-client.mjs
+          node --check customer-app/offline-license.cjs
           node --check activation-service/server.mjs
           node --check activation-service/keygen.mjs
           bash -n activation-service/deploy.sh
@@ -28,4 +29,4 @@ jobs:
       - name: Build activation service container image
         run: docker build -t marketplace-bot-activation:test activation-service
       - name: Run activation and service integration tests
-        run: node --test activation-service/tests/*.test.mjs
+        run: node --test activation-service/tests/*.test.mjs customer-app/tests/*.test.cjs
