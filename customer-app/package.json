@@ -1,0 +1,17 @@
+{
+  "name": "marketplace-bot-customer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marketplace Bot customer desktop workspace",
+  "main": "main.cjs",
+  "scripts": { "dev": "electron .", "build:win": "electron-builder --win nsis" },
+  "devDependencies": { "electron": "^34.5.8", "electron-builder": "^25.1.8" },
+  "build": {
+    "appId": "com.marketplacebot.customer",
+    "productName": "Marketplace Bot",
+    "directories": { "output": "release" },
+    "files": ["**/*", "!release/**/*"],
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true }
+  }
+}
