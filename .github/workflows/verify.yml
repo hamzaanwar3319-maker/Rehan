@@ -1,0 +1,35 @@
+name: Syntax and offline licensing tests
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, marketplace-bot-license-keys-2026-11-24]
+concurrency:
+  group: marketplace-bot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: |
+          node --check desktop/main.cjs
+          node --check desktop/preload.cjs
+          node --check desktop/renderer.js
+          node --check customer-app/main.cjs
+          node --check customer-app/preload.cjs
+          node --check customer-app/renderer.js
+                    node --check customer-app/offline-license.cjs
+          node --check activation-service/server.mjs
+          node --check activation-service/keygen.mjs
+          bash -n activation-service/deploy.sh
+          sh -n activation-service/docker-entrypoint.sh
+      - name: Build optional activation service container image
+        run: docker build -t marketplace-bot-activation:test activation-service
+      - name: Run offline license and optional service tests
+        run: node --test activation-service/tests/*.test.mjs customer-app/tests/*.test.cjs

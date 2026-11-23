@@ -1,0 +1,24 @@
+services:
+  activation:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      DATA_FILE: /data/activation-db.json
+      TOKEN_PRIVATE_KEY_FILE: /run/secrets/activation_private_key
+      TOKEN_PUBLIC_KEY_FILE: /run/secrets/activation_public_key
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./data:/data
+    secrets:
+      - activation_private_key
+      - activation_public_key
+
+secrets:
+  activation_private_key:
+    file: ./private-key.pem
+  activation_public_key:
+    file: ./public-key.pem
