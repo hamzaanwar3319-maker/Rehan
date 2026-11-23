@@ -11,7 +11,7 @@ Before making a customer release, replace `activation-public-key.pem` with the p
 - Ed25519 token signature and expiry verification.
 - Activation token encrypted using Electron safeStorage/Windows DPAPI.
 - Local listing draft CRUD with title, description, price, category, condition, availability, location, tags, delivery and image file references.
-- Guided Facebook Marketplace publishing: open the create-item form in a selected persistent account profile and copy the draft title to the clipboard.
+- Guided Facebook Marketplace preparation: open the create-item form in a selected persistent account profile, attempt to fill title/description/price, and upload selected photos.
 - Copy listing text to clipboard for the customer to paste into Facebook.
 - Account profiles each open a separate persistent Chromium session; users log in manually.
 - Task queue with status updates and local activity log.
@@ -21,7 +21,7 @@ Before making a customer release, replace `activation-public-key.pem` with the p
 ## Important boundaries
 - This app does not collect Facebook passwords.
 - Cookie archive import does not authenticate the user or bypass login/2FA.
-- The guided publisher does not fill Facebook form fields, upload photos, or click the final Publish button automatically. The customer reviews and submits the listing manually in Facebook. This avoids fragile, unsupported browser automation and keeps the account owner in control.
+- The publisher uses best-effort Facebook page selectors to fill fields and Chromium DevTools to upload selected photos. Facebook can change its interface, so field/photo automation may fail and must be checked. The customer reviews the listing and clicks the final Publish button manually. It does not bypass login, CAPTCHA, 2FA or other security checks.
 - Automated relisting, renewals or bulk deletion are not included.
 - No CAPTCHA, 2FA or Facebook anti-abuse control is bypassed.
 - No device ID is sent to the activation service. The activation token can therefore be copied with the app data to another computer; this is the intentional no-PC-binding trade-off.
