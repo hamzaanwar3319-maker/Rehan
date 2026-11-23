@@ -4,6 +4,10 @@ on:
     branches: [main]
   push:
     branches: [main, marketplace-bot-license-keys-2026-11-24]
+concurrency:
+  group: marketplace-bot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
