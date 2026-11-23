@@ -43,9 +43,9 @@ const server=http.createServer(async(req,res)=>{
      const key=String(item.key||'');const days=Number(item.days);
      if(!/^\d{10}$/.test(key)||![30,90,180,365].includes(days))throw Object.assign(new Error('Every key must be 10 digits with a 30/90/180/365-day duration.'),{status:400});
      const hash=hashKey(key);if(seen.has(hash))throw Object.assign(new Error('Duplicate key in submitted batch.'),{status:409});seen.add(hash);
-     if(state.keys[hash])throw Object.assign(new Error('A submitted key already exists on this activation server.'),{status:409});
+     if(state.keys[hash]&&state.keys[hash].days!==days)throw Object.assign(new Error('An existing key has a different duration.'),{status:409});
     }
-    for(const item of data.keys){const hash=hashKey(String(item.key));state.keys[hash]={days:Number(item.days),status:'unused',createdAt:new Date().toISOString(),batchId:String(item.batchId||'')};added++;}
+    for(const item of data.keys){const hash=hashKey(String(item.key));if(state.keys[hash])continue;state.keys[hash]={days:Number(item.days),status:'unused',createdAt:new Date().toISOString(),batchId:String(item.batchId||'')};added++;}
     persist();return {imported:added};
    });
    return send(res,200,result);
@@ -65,6 +65,10 @@ const server=http.createServer(async(req,res)=>{
     persist();return {status:200,token,publicKey:fs.readFileSync(PUB,'utf8')};
    });
    return send(res,result.status||200,result);
+  }
+  if(req.method==='GET'&&url.pathname==='/v1/admin/redemptions'){
+   if(!authorized(req))return send(res,401,{error:'Unauthorized'});
+   return send(res,200,{format:'marketplace-bot-redemption-report-v1',generatedAt:new Date().toISOString(),redemptions:state.redemptions});
   }
   if(req.method==='GET'&&url.pathname==='/v1/admin/summary'){
    if(!authorized(req))return send(res,401,{error:'Unauthorized'});
