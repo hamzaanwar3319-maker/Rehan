@@ -4,7 +4,38 @@
   "private": true,
   "description": "Offline license and customer administration for Marketplace Bot",
   "main": "main.cjs",
-  "scripts": {"dev":"electron .","build:win":"electron-builder --win nsis"},
-  "devDependencies": {"electron":"^34.2.0","electron-builder":"^25.1.8"},
-  "build": {"appId":"com.marketplacebot.admin","productName":"Marketplace Bot Admin","directories":{"output":"release"},"files":["**/*","!release/**/*"],"win":{"target":[{"target":"nsis","arch":["x64"]}]},"nsis":{"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true}}
+  "scripts": {
+    "dev": "electron .",
+    "build:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.marketplacebot.admin",
+    "productName": "Marketplace Bot Admin",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!release/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
 }
