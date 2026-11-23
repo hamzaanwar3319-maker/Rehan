@@ -2,7 +2,6 @@ services:
   activation:
     build: .
     restart: unless-stopped
-    user: "1000:1000"
     env_file: .env
     environment:
       HOST: 0.0.0.0
