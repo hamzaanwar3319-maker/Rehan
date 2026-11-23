@@ -2,6 +2,7 @@
   "name": "marketplace-bot-admin",
   "version": "1.0.0",
   "private": true,
+  "author": "Rehan",
   "description": "Offline license and customer administration for Marketplace Bot",
   "main": "main.cjs",
   "scripts": {
@@ -9,11 +10,13 @@
     "build:win": "electron-builder --win nsis"
   },
   "devDependencies": {
+    "electron": "^34.5.8",
     "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "com.marketplacebot.admin",
     "productName": "Marketplace Bot Admin",
+    "electronVersion": "34.5.8",
     "directories": {
       "output": "release"
     },
