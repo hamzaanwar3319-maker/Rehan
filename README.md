@@ -34,3 +34,10 @@ The first build needs internet access to download Electron and packaging depende
 - Customer clock changes can affect expiry checks while fully offline. Strong time anti-tampering requires periodic online checks or trusted hardware/time.
 - Keep your admin PC and Windows user account secure. The private signing key is encrypted using Windows secure storage. A backup restored under a different Windows user/device may not be able to decrypt that key; preserve the original PC/user profile or use a controlled key migration procedure.
 - This admin tool does not automate Facebook publishing and does not collect Facebook passwords or cookies.
+
+
+## 10-digit key batch generator
+- Admin can generate batches of 10 unique 10-digit numeric keys for 30, 90, 180 or 365 days.
+- Keys are stored in the existing local database; existing customer, legacy license and signing records are preserved.
+- Keys can be copied or exported as JSON.
+- **Not yet implemented:** global one-time redemption, first online activation, server-side expiry tracking, redemption synchronization, and customer-app signed-token verification. Until an activation service is connected, these are local key records only and must not be advertised as globally protected one-time licenses.
