@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
-export async function activate({serverUrl,key,saveToken}){
+export async function activate({serverUrl,key,publicKeyPem,saveToken}){
   const response=await fetch(new URL('/v1/activate',serverUrl),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key})});
   const data=await response.json();
   if(!response.ok)throw new Error(data.error||'Activation failed');
-  const verified=verifyActivationToken(data.token,data.publicKey);
+  const verified=verifyActivationToken(data.token,publicKeyPem);
   if(!verified.valid)throw new Error('Activation token signature is invalid.');
   await saveToken(data.token);
   return verified.payload;
