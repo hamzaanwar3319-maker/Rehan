@@ -53,7 +53,51 @@ ipcMain.handle('listing:delete',(_e,{id})=>{db.listings=db.listings.filter(x=>x.
 ipcMain.handle('listing:images',async()=>{const r=await dialog.showOpenDialog({properties:['openFile','multiSelections'],filters:[{name:'Images',extensions:['png','jpg','jpeg','webp']} ]});return r.canceled?[]:r.filePaths.slice(0,10);});
 ipcMain.handle('listing:copy',(_e,{id})=>{const l=db.listings.find(x=>x.id===id);if(!l)throw Error('Listing not found');clipboard.writeText([l.title,l.description,'Price: '+l.price,'Category: '+l.category,'Condition: '+l.condition,'Location: '+l.location,'Tags: '+l.tags].filter(Boolean).join('\n'));return true;});
 ipcMain.handle('listing:copyField',(_e,{id,field})=>{const l=db.listings.find(x=>x.id===id);if(!l)throw Error('Listing not found');const allowed={title:l.title,description:l.description,price:l.price};if(!Object.prototype.hasOwnProperty.call(allowed,field))throw Error('Unsupported listing field');clipboard.writeText(allowed[field]||'');return true;});
-ipcMain.handle('listing:openComposer',async(_e,{id,accountId})=>{const l=db.listings.find(x=>x.id===id);if(!l)throw Error('Listing not found');const a=db.accounts.find(x=>x.id===accountId);if(!a)throw Error('Choose a saved Facebook account profile first');const partition='persist:fb-'+a.id;const win=new BrowserWindow({width:1280,height:900,title:'Facebook Marketplace — '+a.name,webPreferences:{partition,contextIsolation:true,nodeIntegration:false,sandbox:true}});await win.loadURL('https://www.facebook.com/marketplace/create/item/');clipboard.writeText(l.title);log('info','Opened Marketplace listing composer for draft: '+l.title+' (manual review and submission required).');return {ok:true,title:l.title,images:l.images.length,account:a.name};});
+async function prepareFacebookListing(win,listing,imagePaths){
+ await new Promise(resolve=>setTimeout(resolve,3500));
+ const currentUrl=win.webContents.getURL();
+ if(/login|checkpoint|two_factor|recover/i.test(currentUrl))return {loginRequired:true,fields:[],photos:0};
+ const fillResult=await win.webContents.executeJavaScript(`(()=>{
+ const visible=e=>!!(e&&e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden');
+ const nodes=[...document.querySelectorAll('[role="textbox"],input:not([type="file"]),textarea')].filter(visible);
+ const describe=e=>[(e.getAttribute('aria-label')||''),(e.getAttribute('placeholder')||''),(e.getAttribute('name')||''),(e.innerText||'')].join(' ').toLowerCase();
+ const find=re=>nodes.find(e=>re.test(describe(e)));
+ const set=(el,value)=>{if(!el)return false;el.focus();if(el.isContentEditable||el.getAttribute('role')==='textbox'){el.textContent=value;el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:value}));}else{const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;const setter=Object.getOwnPropertyDescriptor(proto,'value')?.set;if(setter)setter.call(el,value);else el.value=value;el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:value}));el.dispatchEvent(new Event('change',{bubbles:true}));}return true;};
+ const title=find(/title|what are you selling|listing title/);
+ const price=find(/price/);
+ const desc=find(/description|describe your item/);
+ const fields=[];if(set(title,${JSON.stringify(listing.title)}))fields.push('title');if(set(price,${JSON.stringify(listing.price)}))fields.push('price');if(set(desc,${JSON.stringify(listing.description)}))fields.push('description');
+ const photoButton=[...document.querySelectorAll('button,[role="button"]')].find(e=>visible(e)&&/add photos|add photo|photos/i.test(e.innerText||e.getAttribute('aria-label')||''));
+ if(photoButton)photoButton.click();
+ return {fields};
+ })()`,true);
+ let photos=0,photoError=null;
+ if(imagePaths.length){
+  try{
+   const dbg=win.webContents.debugger;dbg.attach('1.3');
+   try{
+    let doc=await dbg.sendCommand('DOM.getDocument',{depth:-1,pierce:true});
+    let found=await dbg.sendCommand('DOM.querySelectorAll',{nodeId:doc.root.nodeId,selector:'input[type="file"]'});
+    if(!found.nodeIds.length){await new Promise(resolve=>setTimeout(resolve,1200));doc=await dbg.sendCommand('DOM.getDocument',{depth:-1,pierce:true});found=await dbg.sendCommand('DOM.querySelectorAll',{nodeId:doc.root.nodeId,selector:'input[type="file"]'});}
+    if(found.nodeIds.length){await dbg.sendCommand('DOM.setFileInputFiles',{nodeId:found.nodeIds[0],files:imagePaths});photos=imagePaths.length;}
+    else photoError='Facebook photo upload control was not available on this page.';
+   }finally{dbg.detach();}
+  }catch(e){photoError=e.message||'Photo upload could not be completed.';}
+ }
+ return {loginRequired:false,fields:fillResult.fields||[],photos,photoError};
+}
+ipcMain.handle('listing:openComposer',async(_e,{id,accountId})=>{
+ const l=db.listings.find(x=>x.id===id);if(!l)throw Error('Listing not found');
+ const a=db.accounts.find(x=>x.id===accountId);if(!a)throw Error('Choose a saved Facebook account profile first');
+ const imagePaths=(l.images||[]).filter(p=>typeof p==='string'&&fs.existsSync(p)).slice(0,10);
+ const win=new BrowserWindow({width:1280,height:900,title:'Facebook Marketplace — '+a.name,webPreferences:{partition:'persist:fb-'+a.id,contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ await win.loadURL('https://www.facebook.com/marketplace/create/item/');
+ const result=await prepareFacebookListing(win,l,imagePaths);
+ clipboard.writeText(l.title);
+ if(result.loginRequired){log('warning','Facebook sign-in is required before preparing listing: '+l.title);return {ok:true,loginRequired:true,fields:[],photos:0,message:'Sign in to Facebook in this window, then try Prepare listing again.'};}
+ log('info','Prepared Marketplace listing '+l.title+'; filled '+result.fields.join(', ')+'; uploaded '+result.photos+' photos. Final Publish click remains manual.');
+ return {ok:true,title:l.title,account:a.name,fields:result.fields,photos:result.photos,photoError:result.photoError||null,message:'Review all fields and photos in Facebook, then click Publish yourself.'};
+});
 ipcMain.handle('account:add',(_e,data)=>{const name=safeText(data.name,80);if(!name)throw Error('Enter an account label.');const a={id:crypto.randomUUID(),name,createdAt:new Date().toISOString()};db.accounts.unshift(a);save();log('info','Added account profile: '+name);return a;});
 ipcMain.handle('account:remove',(_e,{id})=>{db.accounts=db.accounts.filter(x=>x.id!==id);save();return true;});
 ipcMain.handle('account:open',async(_e,{id})=>{const a=db.accounts.find(x=>x.id===id);if(!a)throw Error('Account profile not found');const partition='persist:fb-'+a.id;const win=new BrowserWindow({width:1280,height:850,title:'Facebook Login — '+a.name,webPreferences:{partition,contextIsolation:true,nodeIntegration:false,sandbox:true}});await win.loadURL('https://www.facebook.com/marketplace/');log('info','Opened Facebook Marketplace browser profile: '+a.name);return true;});
