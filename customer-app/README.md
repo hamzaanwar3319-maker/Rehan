@@ -11,6 +11,7 @@ Before making a customer release, replace `activation-public-key.pem` with the p
 - Ed25519 token signature and expiry verification.
 - Activation token encrypted using Electron safeStorage/Windows DPAPI.
 - Local listing draft CRUD with title, description, price, category, condition, availability, location, tags, delivery and image file references.
+- Guided Facebook Marketplace publishing: open the create-item form in a selected persistent account profile and copy the draft title to the clipboard.
 - Copy listing text to clipboard for the customer to paste into Facebook.
 - Account profiles each open a separate persistent Chromium session; users log in manually.
 - Task queue with status updates and local activity log.
@@ -20,7 +21,8 @@ Before making a customer release, replace `activation-public-key.pem` with the p
 ## Important boundaries
 - This app does not collect Facebook passwords.
 - Cookie archive import does not authenticate the user or bypass login/2FA.
-- No automated Facebook publishing, relisting, renewals or bulk deletion is included.
+- The guided publisher does not fill Facebook form fields, upload photos, or click the final Publish button automatically. The customer reviews and submits the listing manually in Facebook. This avoids fragile, unsupported browser automation and keeps the account owner in control.
+- Automated relisting, renewals or bulk deletion are not included.
 - No CAPTCHA, 2FA or Facebook anti-abuse control is bypassed.
 - No device ID is sent to the activation service. The activation token can therefore be copied with the app data to another computer; this is the intentional no-PC-binding trade-off.
 - Offline expiry is based on the local system clock and is vulnerable to clock tampering.
