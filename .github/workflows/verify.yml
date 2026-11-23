@@ -1,0 +1,27 @@
+name: Syntax and activation tests
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: |
+          node --check desktop/main.cjs
+          node --check desktop/preload.cjs
+          node --check desktop/renderer.js
+          node --check customer-app/main.cjs
+          node --check customer-app/preload.cjs
+          node --check customer-app/renderer.js
+          node --check customer-app/activation-client.mjs
+          node --check activation-service/server.mjs
+          node --check activation-service/keygen.mjs
+      - name: Run activation and service integration tests
+        run: node --test activation-service/tests/*.test.mjs
