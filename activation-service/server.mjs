@@ -13,7 +13,7 @@ const PRIV=path.resolve(process.env.TOKEN_PRIVATE_KEY_FILE||path.join(root,'priv
 const PUB=path.resolve(process.env.TOKEN_PUBLIC_KEY_FILE||path.join(root,'public-key.pem'));
 const PRODUCT='Marketplace Bot';
 let state={keys:{},redemptions:[]};
-let queue=Promise.resolve();
+let queue=Promise.resolve();\nconst attempts=new Map();
 
 function load(){
   if(fs.existsSync(DATA)){const d=JSON.parse(fs.readFileSync(DATA,'utf8'));state={keys:d.keys||{},redemptions:Array.isArray(d.redemptions)?d.redemptions:[]};}
@@ -25,7 +25,7 @@ function persist(){fs.mkdirSync(path.dirname(DATA),{recursive:true});const tmp=D
 function hashKey(k){return crypto.createHash('sha256').update(k).digest('hex');}
 function send(res,status,obj){const body=JSON.stringify(obj);res.writeHead(status,{'content-type':'application/json; charset=utf-8','content-length':Buffer.byteLength(body),'cache-control':'no-store','x-content-type-options':'nosniff'});res.end(body);}
 async function body(req){let s='';for await(const c of req){s+=c;if(s.length>1024*1024)throw Object.assign(new Error('Request too large'),{status:413});}try{return JSON.parse(s||'{}');}catch{throw Object.assign(new Error('Invalid JSON'),{status:400});}}
-function authorized(req){const h=req.headers.authorization||'';return h===('Bearer '+ADMIN);}
+function authorized(req){const h=Buffer.from(req.headers.authorization||'');const expected=Buffer.from('Bearer '+ADMIN);return h.length===expected.length&&crypto.timingSafeEqual(h,expected);}\nfunction rateLimited(req){const ip=req.socket.remoteAddress||'unknown',now=Date.now(),old=attempts.get(ip)||[];const recent=old.filter(t=>now-t<10*60*1000);recent.push(now);attempts.set(ip,recent);return recent.length>15;}
 function signedToken(payload){const b=Buffer.from(JSON.stringify(payload)).toString('base64url');const sig=crypto.sign(null,Buffer.from(b),fs.readFileSync(PRIV)).toString('base64url');return {format:'marketplace-bot-activation-v1',payload:b,signature:sig};}
 function enqueue(fn){const p=queue.then(fn,fn);queue=p.catch(()=>{});return p;}
 const server=http.createServer(async(req,res)=>{
