@@ -2,6 +2,14 @@
   "name": "marketplace-bot-admin-suite",
   "version": "1.0.0",
   "private": true,
-  "workspaces": ["desktop"],
-  "scripts": {"dev":"npm --workspace desktop run dev","build:win":"npm --workspace desktop run build:win"}
+  "workspaces": [
+    "desktop"
+  ],
+  "scripts": {
+    "dev": "npm --workspace desktop run dev",
+    "build:win": "npm --workspace desktop run build:win"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1"
+  }
 }
