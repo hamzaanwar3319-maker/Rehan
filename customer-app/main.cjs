@@ -1,5 +1,6 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,clipboard,safeStorage,session}=require('electron');
 const path=require('node:path'),fs=require('node:fs'),crypto=require('node:crypto');
+const {verifyOfflineEntry}=require('./offline-license.cjs');
 let db={listings:[],accounts:[],tasks:[],logs:[],settings:{},activation:null,offlineKeyPack:null,usedOfflineKeys:[],cookieVault:null};
 const dbFile=()=>path.join(app.getPath('userData'),'marketplace-bot-data.json');
 function load(){try{const saved=JSON.parse(fs.readFileSync(dbFile(),'utf8'));db={...db,...saved,settings:{...db.settings,...saved.settings},usedOfflineKeys:Array.isArray(saved.usedOfflineKeys)?saved.usedOfflineKeys:[]};}catch{}}
@@ -10,11 +11,6 @@ function createWindow(){const w=new BrowserWindow({width:1440,height:920,minWidt
 app.whenReady().then(()=>{load();createWindow();app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 ipcMain.handle('app:state',()=>({listings:db.listings,accounts:db.accounts,tasks:db.tasks,logs:db.logs,settings:db.settings,activated:validActivation()}));
-function verifyOfflineEntry(entry,publicKey){
- if(!entry||!entry.payload||!/^\d{10}$/.test(String(entry.payload.key||'')))return false;
- const p=entry.payload;if(p.product!=='Marketplace Bot'||![30,90,180,365].includes(Number(p.days)))return false;
- try{const body=Buffer.from(JSON.stringify(p)).toString('base64url');return crypto.verify(null,Buffer.from(body),crypto.createPublicKey(publicKey),Buffer.from(entry.signature||'','base64url'));}catch{return false;}
-}
 function validActivation(){
  if(!db.activation||!safeStorage.isEncryptionAvailable()||!db.offlineKeyPack)return false;
  try{const active=JSON.parse(safeStorage.decryptString(Buffer.from(db.activation,'base64')));const entry=db.offlineKeyPack.keys.find(x=>x.payload.key===active.key);
