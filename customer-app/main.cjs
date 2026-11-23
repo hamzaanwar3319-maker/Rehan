@@ -1,28 +1,48 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,clipboard,safeStorage,session}=require('electron');
 const path=require('node:path'),fs=require('node:fs'),crypto=require('node:crypto');
-let verifyActivationToken;
-let db={listings:[],accounts:[],tasks:[],logs:[],settings:{activationServer:''},activation:null,cookieVault:null};
+let db={listings:[],accounts:[],tasks:[],logs:[],settings:{},activation:null,offlineKeyPack:null,usedOfflineKeys:[],cookieVault:null};
 const dbFile=()=>path.join(app.getPath('userData'),'marketplace-bot-data.json');
-function load(){try{const saved=JSON.parse(fs.readFileSync(dbFile(),'utf8'));db={...db,...saved,settings:{...db.settings,...saved.settings}};}catch{}}
+function load(){try{const saved=JSON.parse(fs.readFileSync(dbFile(),'utf8'));db={...db,...saved,settings:{...db.settings,...saved.settings},usedOfflineKeys:Array.isArray(saved.usedOfflineKeys)?saved.usedOfflineKeys:[]};}catch{}}
 function save(){fs.mkdirSync(path.dirname(dbFile()),{recursive:true});const tmp=dbFile()+'.tmp';fs.writeFileSync(tmp,JSON.stringify(db,null,2),{mode:0o600});fs.renameSync(tmp,dbFile());}
 function log(type,message){db.logs.unshift({id:crypto.randomUUID(),type,message,at:new Date().toISOString()});db.logs=db.logs.slice(0,500);save();}
 function safeText(v,max=5000){return String(v??'').trim().slice(0,max);}
 function createWindow(){const w=new BrowserWindow({width:1440,height:920,minWidth:1100,minHeight:720,backgroundColor:'#0b1220',title:'Marketplace Bot',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});w.loadFile(path.join(__dirname,'index.html'));}
-app.whenReady().then(async()=>{({verifyActivationToken}=await import('./activation-client.mjs'));load();createWindow();app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow();});});
+app.whenReady().then(()=>{load();createWindow();app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length)createWindow();});});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
 ipcMain.handle('app:state',()=>({listings:db.listings,accounts:db.accounts,tasks:db.tasks,logs:db.logs,settings:db.settings,activated:validActivation()}));
-function validActivation(){if(!db.activation||!safeStorage.isEncryptionAvailable())return false;try{const token=JSON.parse(safeStorage.decryptString(Buffer.from(db.activation,'base64')));const pem=fs.readFileSync(path.join(__dirname,'activation-public-key.pem'),'utf8');return verifyActivationToken(token,pem).valid;}catch{return false;}}
-ipcMain.handle('activation:activate',async(_e,{key,serverUrl})=>{
- if(!safeStorage.isEncryptionAvailable())throw Error('Windows secure storage is unavailable.');
- const pem=fs.readFileSync(path.join(__dirname,'activation-public-key.pem'),'utf8');
- if(!pem.includes('BEGIN PUBLIC KEY'))throw Error('This release has no pinned activation public key. Contact the software administrator for the signed release build.');
- const url=safeText(serverUrl,300).replace(/\/$/,'');if(!/^https:\/\//i.test(url))throw Error('Activation server must use HTTPS.');
- const response=await fetch(url+'/v1/activate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key:safeText(key,10)})});
- const data=await response.json();if(!response.ok)throw Error(data.error||'Activation failed.');
- const check=verifyActivationToken(data.token,pem);if(!check.valid)throw Error('Activation token verification failed: '+check.reason);
- db.activation=safeStorage.encryptString(JSON.stringify(data.token)).toString('base64');db.settings.activationServer=url;save();log('success','Product activated.');return {ok:true,expiresAt:check.payload.expiresAt,plan:check.payload.plan};
+function verifyOfflineEntry(entry,publicKey){
+ if(!entry||!entry.payload||!/^\\d{10}$/.test(String(entry.payload.key||'')))return false;
+ const p=entry.payload;if(p.product!=='Marketplace Bot'||![30,90,180,365].includes(Number(p.days)))return false;
+ try{const body=Buffer.from(JSON.stringify(p)).toString('base64url');return crypto.verify(null,Buffer.from(body),crypto.createPublicKey(publicKey),Buffer.from(entry.signature||'','base64url'));}catch{return false;}
+}
+function validActivation(){
+ if(!db.activation||!safeStorage.isEncryptionAvailable()||!db.offlineKeyPack)return false;
+ try{const active=JSON.parse(safeStorage.decryptString(Buffer.from(db.activation,'base64')));const entry=db.offlineKeyPack.keys.find(x=>x.payload.key===active.key);
+ return !!entry&&verifyOfflineEntry(entry,db.offlineKeyPack.publicKey)&&Date.parse(active.expiresAt)>Date.now()&&db.usedOfflineKeys.includes(active.key);
+ }catch{return false;}
+}
+ipcMain.handle('offline:importPack',async()=>{
+ const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Offline key pack',extensions:['json']}]});if(r.canceled)return false;
+ const pack=JSON.parse(fs.readFileSync(r.filePaths[0],'utf8'));
+ if(pack.product!=='Marketplace Bot'||pack.format!=='marketplace-bot-offline-key-pack-v1'||typeof pack.publicKey!=='string'||!Array.isArray(pack.keys)||!pack.keys.length)throw Error('Invalid offline key pack.');
+ if(db.offlineKeyPack&&db.offlineKeyPack.publicKey!==pack.publicKey)throw Error('This app is already enrolled to a different Admin signing key. Contact your software administrator.');
+ const valid=pack.keys.filter(x=>verifyOfflineEntry(x,pack.publicKey));
+ if(valid.length!==pack.keys.length)throw Error('The offline key pack contains an invalid signature or key.');
+ const merged=new Map((db.offlineKeyPack?.keys||[]).map(x=>[x.payload.key,x]));for(const item of valid)merged.set(item.payload.key,item);
+ db.offlineKeyPack={publicKey:pack.publicKey,keys:[...merged.values()]};save();log('success','Imported '+valid.length+' signed offline subscription keys.');return {count:valid.length};
 });
-ipcMain.handle('activation:status',()=>({active:validActivation(),activation:validActivation()?(()=>{try{const t=JSON.parse(safeStorage.decryptString(Buffer.from(db.activation,'base64')));return verifyActivationToken(t,fs.readFileSync(path.join(__dirname,'activation-public-key.pem'),'utf8')).payload;}catch{return null;}})():null}));
+ipcMain.handle('offline:activate',(_e,{key})=>{
+ if(!safeStorage.isEncryptionAvailable())throw Error('Windows secure storage is unavailable.');
+ const value=String(key||'').trim();if(!/^\\d{10}$/.test(value))throw Error('Enter your 10-digit subscription key.');
+ if(!db.offlineKeyPack)throw Error('First import the offline key pack supplied by your Admin.');
+ if(validActivation())throw Error('This workspace is already activated.');
+ if(db.usedOfflineKeys.includes(value))throw Error('This key has already been used on this installation.');
+ const entry=db.offlineKeyPack.keys.find(x=>x.payload.key===value);if(!entry||!verifyOfflineEntry(entry,db.offlineKeyPack.publicKey))throw Error('Invalid key. Check the 10 digits or ask your Admin for the correct offline key pack.');
+ const activatedAt=new Date(),expiresAt=new Date(activatedAt.getTime()+Number(entry.payload.days)*86400000);
+ const active={key:value,plan:entry.payload.plan,days:Number(entry.payload.days),activatedAt:activatedAt.toISOString(),expiresAt:expiresAt.toISOString()};
+ db.usedOfflineKeys.push(value);db.activation=safeStorage.encryptString(JSON.stringify(active)).toString('base64');save();log('success','Offline key activated until '+expiresAt.toISOString());return {ok:true,expiresAt:active.expiresAt,plan:active.plan};
+});
+ipcMain.handle('activation:status',()=>{let activation=null;if(validActivation()){try{activation=JSON.parse(safeStorage.decryptString(Buffer.from(db.activation,'base64')));}catch{}}return {active:!!activation,activation,hasPack:!!db.offlineKeyPack};});
 ipcMain.handle('listing:save',(_e,data)=>{
  const title=safeText(data.title,180),description=safeText(data.description,5000),price=safeText(data.price,40);
  if(!title||!description||!price)throw Error('Title, description and price are required.');
