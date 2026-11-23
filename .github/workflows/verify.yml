@@ -25,5 +25,7 @@ jobs:
           node --check activation-service/keygen.mjs
           bash -n activation-service/deploy.sh
           sh -n activation-service/docker-entrypoint.sh
+      - name: Build activation service container image
+        run: docker build -t marketplace-bot-activation:test activation-service
       - name: Run activation and service integration tests
         run: node --test activation-service/tests/*.test.mjs
