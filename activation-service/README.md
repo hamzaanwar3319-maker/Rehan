@@ -13,7 +13,7 @@ Node.js 20+ reference service. The offline Admin exports a JSON key batch; an op
 2. Clone this repository and enter activation-service.
 3. Copy .env.example to .env and set a long random ADMIN_API_TOKEN.
 4. Run `node keygen.mjs` once on the server (or securely provision an existing key pair). Never copy private-key.pem into a public repository.
-5. Create writable data directory: `mkdir -p data && sudo chown 1000:1000 data`.
+5. Create the data directory: `mkdir -p data`. The container entrypoint adjusts its ownership before dropping privileges.
 6. Configure the Nginx HTTPS virtual host using nginx.conf.example. Replace activation.example.com with your real domain and configure a valid TLS certificate.
 7. Run `docker compose up -d --build`. The API binds only to 127.0.0.1:8787; public traffic must pass through HTTPS Nginx.
 8. Test `https://your-domain/health` and protect the VPS, .env, private key and data backups.
