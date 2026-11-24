@@ -1,0 +1,9 @@
+{
+  "name": "marketplace-temporary-session-assistant",
+  "version": "1.1.0",
+  "description": "Marketplace listing preparation with temporary, non-persistent browser session",
+  "main": "src/main.cjs",
+  "scripts": {"start": "electron .", "dist": "electron-builder --win nsis"},
+  "devDependencies": {"electron": "^34.5.8", "electron-builder": "^25.1.8"},
+  "build": {"appId": "com.local.marketplaceassistant", "productName": "Marketplace Assistant", "directories": {"output": "release"}, "win": {"target": [{"target": "nsis", "arch": ["x64"]}]}, "nsis": {"oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true}}
+}
