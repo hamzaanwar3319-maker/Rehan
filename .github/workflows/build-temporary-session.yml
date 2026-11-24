@@ -1,0 +1,37 @@
+name: Build Marketplace Assistant Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "temporary-session-app/**"
+      - ".github/workflows/build-temporary-session.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: temporary-session-app/package.json
+      - name: Install dependencies
+        working-directory: temporary-session-app
+        run: npm install
+      - name: Build Windows installer
+        working-directory: temporary-session-app
+        run: npm run dist
+      - name: Upload EXE installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Marketplace-Assistant-Windows-Setup
+          path: temporary-session-app/release/*.exe
+          if-no-files-found: error
+          retention-days: 14
